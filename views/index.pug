@@ -1,4 +1,7 @@
 extends layout
 
 block content
-  h1 #{title}
+  h1 #{h1}
+  ul
+    each post, i in posts
+      li= post.title
