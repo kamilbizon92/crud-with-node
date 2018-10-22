@@ -71,6 +71,42 @@ app.get('/article/:id', (req, res) => {
   });
 });
 
+// Get edit article
+app.get('/article/edit/:id', (req, res) => {
+  pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id], (err, article) => {
+    if (err) {
+      console.log(err);
+    } else {
+      res.render('edit_article', {
+        h1: 'Edit article',
+        article: article.rows[0]
+      });
+    }
+  });
+});
+
+// Post edit article (update)
+app.post('/article/edit/:id', (req, res) => {
+  pool.query('UPDATE posts SET title=$1, author=$2, body=$3 WHERE id=$4', [req.body.title, req.body.author, req.body.body, req. params.id], (err) => {
+    if (err) {
+      console.log(err);
+    } else {
+      res.redirect('/');
+    }
+  });
+});
+
+// Delete article
+app.delete('/article/:id', (req, res) => {
+  pool.query('DELETE FROM posts WHERE id=$1', [req.params.id], (err) => {
+    if (err) {
+      console.log(err);
+    } else {
+      res.sendStatus(200);
+    }
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Listening on port: ${PORT}`);
