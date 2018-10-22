@@ -34,26 +34,39 @@ app.get('/', (req, res) => {
     } else {
       res.render('index', {
         h1: 'Articles',
-        posts: result.rows
+        articles: result.rows
       });
     }
   });
 });
 
+// Form for add article
 app.get('/articles/add', (req, res) => {
   res.render('add_article', {
     h1: 'Add article'
   });
 });
 
-// Add new post
+// Add new article
 app.post('/articles/add', (req, res) => {
   pool.query('INSERT INTO posts (title, author, body) VALUES ($1, $2, $3)', [req.body.title, req.body.author, req.body.body], (err) => {
     if (err) {
       console.log(err);
     } else {
-      console.log('post added');
       res.redirect('/');
+    }
+  });
+});
+
+// Get single article
+app.get('/article/:id', (req, res) => {
+  pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id], (err, article) => {
+    if (err) {
+      console.log(err);
+    } else {
+      res.render('article', {
+        article: article.rows[0]
+      });
     }
   });
 });
