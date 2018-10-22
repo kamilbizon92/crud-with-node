@@ -57,7 +57,9 @@ app.get('/', (req, res) => {
 
 // Route files
 const articles = require('./routes/articles');
+const users = require('./routes/users');
 app.use('/articles', articles);
+app.use('/users', users);
 
 // Start server
 app.listen(PORT, () => {

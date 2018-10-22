@@ -24,7 +24,7 @@ router.post('/add', [
   check('author', 'Author is required!').not().isEmpty(),
   check('body', 'Article must have a body').not().isEmpty()
 ], (req, res) => {
-  const errors = validationResult(req);
+  let errors = validationResult(req);
   if (!errors.isEmpty()) {
     res.render('add_article', {
       errors: errors.array()
