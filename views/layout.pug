@@ -11,6 +11,10 @@ html(lang="en")
       a.navbar-brand(href='/') Home
       a.navbar-brand(href='/articles/add') Add article
     .container
+      if (messages.success)
+        .alert.alert-success #{messages.success}
+      if (messages.warning)
+        .alert.alert-warning #{messages.warning}
       block content
       hr
       footer
