@@ -16,6 +16,9 @@ const pool = new Pool({
   port: config.port
 });
 
+// Needed for parsing req
+app.use(express.urlencoded({extended: true}));
+
 // Load view engine
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
@@ -37,6 +40,18 @@ app.get('/', (req, res) => {
 app.get('/articles/add', (req, res) => {
   res.render('add_article', {
     title: 'Add article'
+  });
+});
+
+// Add new post
+app.post('/articles/add', (req, res) => {
+  pool.query('INSERT INTO posts (title, author, body) VALUES ($1, $2, $3)', [req.body.title, req.body.author, req.body.body], (err) => {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log('post added');
+      res.redirect('/');
+    }
   });
 });
 
