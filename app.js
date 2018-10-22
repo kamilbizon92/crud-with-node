@@ -3,6 +3,7 @@ const path = require('path');
 const { Pool } = require('pg');
 const session = require('express-session');
 const flash = require('connect-flash');
+const { check, validationResult } = require('express-validator/check');
 
 // Init app
 const app = express();
@@ -64,15 +65,26 @@ app.get('/articles/add', (req, res) => {
 });
 
 // Add new article
-app.post('/articles/add', (req, res) => {
-  pool.query('INSERT INTO posts (title, author, body) VALUES ($1, $2, $3)', [req.body.title, req.body.author, req.body.body], (err) => {
-    if (err) {
-      console.log(err);
-    } else {
-      req.flash('success', 'Article added!');
-      res.redirect('/');
-    }
-  });
+app.post('/articles/add', [
+  check('title', 'Title is required').not().isEmpty(),
+  check('author', 'Author is required!').not().isEmpty(),
+  check('body', 'Article must have a body').not().isEmpty()
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.render('add_article', {
+      errors: errors.array()
+    });
+  } else {
+    pool.query('INSERT INTO posts (title, author, body) VALUES ($1, $2, $3)', [req.body.title, req.body.author, req.body.body], (err) => {
+      if (err) {
+        console.log(err);
+      } else {
+        req.flash('success', 'Article added!');
+        res.redirect('/');
+      }
+    });
+  }
 });
 
 // Get single article
