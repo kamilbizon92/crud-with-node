@@ -3,6 +3,7 @@ const router = express.Router();
 const { Pool } = require('pg');
 const { check, validationResult } = require('express-validator/check');
 const bcrypt = require('bcryptjs');
+const passport = require('passport');
 
 // Set postgresql database
 const config = require('../config/database');
@@ -58,6 +59,39 @@ router.post('/register', [
       }
     });
   }
+});
+
+// Login form
+router.get('/login', (req, res) => {
+  res.render('login');
+});
+
+// Login process
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.render('login', {
+        loginError: info.message
+      });
+    }
+    req.login(user, (err) => {
+      if (err){
+        return next(err);
+      }
+      req.flash('success', 'You are logged in');
+      res.redirect('/');
+    });
+  })(req, res, next);
+});
+
+// Logout
+router.get('/logout', (req, res) => {
+  req.logout();
+  req.flash('success', 'Come back later');
+  res.redirect('/');
 });
 
 module.exports = router;

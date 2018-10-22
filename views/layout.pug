@@ -10,7 +10,11 @@ html(lang="en")
     nav.navbar.navbar-expand.navbar-dark.bg-dark
       a.navbar-brand(href='/') Home
       a.navbar-brand(href='/articles/add') Add article
-      a.navbar-brand(href='/users/register') Create account
+      if user
+        a.navbar-brand(href='/users/logout') Log out
+      else
+        a.navbar-brand(href='/users/register') Create account
+        a.navbar-brand(href='/users/login') Log in
     .container
       if (messages.success)
         .alert.alert-success #{messages.success}

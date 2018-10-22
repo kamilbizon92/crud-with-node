@@ -3,6 +3,7 @@ const path = require('path');
 const { Pool } = require('pg');
 const session = require('express-session');
 const flash = require('connect-flash');
+const passport = require('passport');
 
 // Init app
 const app = express();
@@ -39,6 +40,17 @@ app.use(flash());
 
 app.use((req, res, next) => {
   res.locals.messages = req.flash();
+  next();
+});
+
+// Passport config
+require('./config/passport')(passport);
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Set global user variable
+app.get('*', (req, res, next) => {
+  res.locals.user = req.user || null;
   next();
 });
 
