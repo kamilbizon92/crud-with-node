@@ -3,7 +3,6 @@ const path = require('path');
 const { Pool } = require('pg');
 const session = require('express-session');
 const flash = require('connect-flash');
-const { check, validationResult } = require('express-validator/check');
 
 // Init app
 const app = express();
@@ -43,100 +42,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routing
+// Home route
 app.get('/', (req, res) => {
   pool.query('SELECT * FROM posts ORDER BY id DESC', (err, result) => {
     if (err) {
       console.log(err);
     } else {
       res.render('index', {
-        h1: 'Articles',
         articles: result.rows
       });
     }
   });
 });
 
-// Form for add article
-app.get('/articles/add', (req, res) => {
-  res.render('add_article', {
-    h1: 'Add article'
-  });
-});
-
-// Add new article
-app.post('/articles/add', [
-  check('title', 'Title is required').not().isEmpty(),
-  check('author', 'Author is required!').not().isEmpty(),
-  check('body', 'Article must have a body').not().isEmpty()
-], (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    res.render('add_article', {
-      errors: errors.array()
-    });
-  } else {
-    pool.query('INSERT INTO posts (title, author, body) VALUES ($1, $2, $3)', [req.body.title, req.body.author, req.body.body], (err) => {
-      if (err) {
-        console.log(err);
-      } else {
-        req.flash('success', 'Article added!');
-        res.redirect('/');
-      }
-    });
-  }
-});
-
-// Get single article
-app.get('/article/:id', (req, res) => {
-  pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id], (err, article) => {
-    if (err) {
-      console.log(err);
-    } else {
-      res.render('article', {
-        article: article.rows[0]
-      });
-    }
-  });
-});
-
-// Get edit article
-app.get('/article/edit/:id', (req, res) => {
-  pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id], (err, article) => {
-    if (err) {
-      console.log(err);
-    } else {
-      res.render('edit_article', {
-        h1: 'Edit article',
-        article: article.rows[0]
-      });
-    }
-  });
-});
-
-// Post edit article (update)
-app.post('/article/edit/:id', (req, res) => {
-  pool.query('UPDATE posts SET title=$1, author=$2, body=$3 WHERE id=$4', [req.body.title, req.body.author, req.body.body, req. params.id], (err) => {
-    if (err) {
-      console.log(err);
-    } else {
-      req.flash('success', 'Article updated!');
-      res.redirect('/');
-    }
-  });
-});
-
-// Delete article
-app.delete('/article/:id', (req, res) => {
-  pool.query('DELETE FROM posts WHERE id=$1', [req.params.id], (err) => {
-    if (err) {
-      console.log(err);
-    } else {
-      req.flash('warning', 'Article deleted!');
-      res.sendStatus(200);
-    }
-  });
-});
+// Route files
+const articles = require('./routes/articles');
+app.use('/articles', articles);
 
 // Start server
 app.listen(PORT, () => {

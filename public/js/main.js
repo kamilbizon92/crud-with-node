@@ -6,7 +6,7 @@ if (document.querySelector('.delete-article')) {
     const id = target.getAttribute('data-id');
     if (confirm('Delete article?')) {
       let xhr = new XMLHttpRequest();
-      xhr.open('DELETE', `${id}`, true);
+      xhr.open('DELETE', `/articles/${id}`, true);
 
       xhr.onload = function() {
         if (this.status == 200) {
