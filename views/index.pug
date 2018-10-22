@@ -2,6 +2,7 @@ extends layout
 
 block content
   h1 #{h1}
-  ul
+  ul.list-group
     each post, i in posts
-      li= post.title
+      li.list-group-item
+        a(href="#")= post.title

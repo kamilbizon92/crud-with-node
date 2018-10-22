@@ -19,6 +19,9 @@ const pool = new Pool({
 // Needed for parsing req
 app.use(express.urlencoded({extended: true}));
 
+// Set public folder
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Load view engine
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
@@ -30,7 +33,7 @@ app.get('/', (req, res) => {
       console.log(err);
     } else {
       res.render('index', {
-        h1: 'Posts',
+        h1: 'Articles',
         posts: result.rows
       });
     }
@@ -39,7 +42,7 @@ app.get('/', (req, res) => {
 
 app.get('/articles/add', (req, res) => {
   res.render('add_article', {
-    title: 'Add article'
+    h1: 'Add article'
   });
 });
 

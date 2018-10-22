@@ -5,8 +5,13 @@ html(lang="en")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
     meta(http-equiv="X-UA-Compatible", content="ie=edge")
     title Simple CRUD
+    link(rel="stylesheet", href="/css/bootstrap.css")
   body
-    block content
-    hr
-    footer
-      p Copyright &copy; 2018
+    nav.navbar.navbar-expand.navbar-dark.bg-dark
+      a.navbar-brand(href='/') Home
+      a.navbar-brand(href='/articles/add') Add article
+    .container
+      block content
+      hr
+      footer
+        p Copyright &copy; 2018
