@@ -8,7 +8,8 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'articles'
   });
   Article.associate = function(models) {
-    // associations can be defined here
+    // Article belongsTo User
+    Article.belongsTo(models.User, { foreignKey: 'author' });
   };
   return Article;
 };

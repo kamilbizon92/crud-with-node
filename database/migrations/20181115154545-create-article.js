@@ -15,7 +15,11 @@ module.exports = {
       },
       author: {
         allowNull: false,
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'users',
+          key: 'id'
+        }
       },
       body: {
         allowNull: false,
