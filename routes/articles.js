@@ -1,17 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 const { check, validationResult } = require('express-validator/check');
 
-// Set postgresql database
-const config = require('../config/database');
-const pool = new Pool({
-  user: config.user,
-  host: config.host,
-  database: config.database,
-  password: config.password,
-  port: config.port
-});
+// Import database models
+const User = require('../database/models').User;
+const Article = require('../database/models').Article;
 
 // Form for add article
 router.get('/add', isUserLogged, (req, res) => {
@@ -30,53 +23,48 @@ router.post('/add', [
       user: req.user
     });
   } else {
-    pool.query('INSERT INTO posts (title, author, body) VALUES ($1, $2, $3)', [req.body.title, req.user.id, req.body.body], (err) => {
-      if (err) {
-        console.log(err);
-      } else {
-        req.flash('success', 'Article added!');
-        res.redirect('/');
-      }
-    });
+    Article.create({
+      title: req.body.title,
+      author: req.user.id,
+      body: req.body.body
+    }).then(() => {
+      req.flash('success', 'Article added!');
+      res.redirect('/');
+    }).catch((err) => console.log(err));
   }
 });
 
 // Get single article
 router.get('/:id', (req, res) => {
-  pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id], (err, article) => {
-    if (err) {
-      console.log(err);
-    } else {
-      pool.query('SELECT email FROM users WHERE id=$1', [article.rows[0].author], (err, author) => {
-        if (err) {
-          console.log(err);
-        } else {
-          res.render('article', {
-            article: article.rows[0],
-            author: author.rows[0].email
-          });
+  Article.findByPk(req.params.id)
+    .then((article) => {
+      User.findOne({
+        attributes: ['email'],
+        where: {
+          id: article.dataValues.author
         }
-      });
-    }
-  });
+      }).then((user) => {
+        res.render('article', {
+          article: article.dataValues,
+          author: user.dataValues.email
+        });
+      }).catch(err => console.log(err));
+    }).catch(err => console.log(err));
 });
 
 // Get edit article
 router.get('/edit/:id', isUserLogged, (req, res) => {
-  pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id], (err, article) => {
-    if (article.rows[0].author != req.user.id) {
-      req.flash('warning', 'Access denied');
-      return res.redirect('/');
-    } else {
-      if (err) {
-        console.log(err);
+  Article.findByPk(req.params.id)
+    .then((article) => {
+      if (article.dataValues.author != req.user.id) {
+        req.flash('warning', 'Access denied');
+        res.redirect('/');
       } else {
         res.render('edit_article', {
-          article: article.rows[0]
+          article: article.dataValues
         });
       }
-    }
-  });
+    }).catch(err => console.log(err));
 });
 
 // Post edit article (update)
@@ -86,26 +74,26 @@ router.post('/edit/:id', [
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id], (err, article) => {
-      if (err) {
-        console.log(err);
-      } else {
+    Article.findByPk(req.params.id)
+      .then((article) => {
         res.render('edit_article', {
           errors: errors.array(),
-          article: article.rows[0],
+          article: article.dataValues,
           user: req.user
         });
-      }
-    });
+      }).catch(err => console.log(err));
   } else {
-    pool.query('UPDATE posts SET title=$1, body=$2 WHERE id=$3', [req.body.title, req.body.body, req. params.id], (err) => {
-      if (err) {
-        console.log(err);
-      } else {
-        req.flash('success', 'Article updated!');
-        res.redirect('/');
+    Article.update({ 
+      title: req.body.title,
+      body: req.body.body
+    }, {
+      where: {
+        id: req.params.id
       }
-    });
+    }).then(() => {
+      req.flash('success', 'Article updated!');
+      res.redirect('/');
+    }).catch(err => console.log(err));
   }
 });
 
@@ -116,24 +104,18 @@ router.delete('/:id', (req, res) => {
     res.status(500).send();
   }
   // Prevent from deleting by other person
-  pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id], (err, article) => {
-    if (err) {
-      console.log(err);
-    } else {
-      if (article.rows[0].author != req.user.id) {
+  Article.findByPk(req.params.id)
+    .then((article) => {
+      if (article.dataValues.author != req.user.id) {
         res.status(500).send();
       } else {
-        pool.query('DELETE FROM posts WHERE id=$1', [req.params.id], (err) => {
-          if (err) {
-            console.log(err);
-          } else {
+        article.destroy()
+          .then(() => {
             req.flash('warning', 'Article deleted!');
             res.sendStatus(200);
-          }
-        });
+          }).catch(err => console.log(err));
       }
-    }
-  });
+    }).catch(err => console.log(err));
 });
 
 // Access control

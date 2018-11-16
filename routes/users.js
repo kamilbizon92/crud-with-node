@@ -1,19 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 const { check, validationResult } = require('express-validator/check');
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
 
-// Set postgresql database
-const config = require('../config/database');
-const pool = new Pool({
-  user: config.user,
-  host: config.host,
-  database: config.database,
-  password: config.password,
-  port: config.port
-});
+// Import User model
+const User = require('../database/models').User;
 
 // Register form
 router.get('/register', (req, res) => {
@@ -46,14 +38,15 @@ router.post('/register', [
           if (err) {
             console.log(err);
           } else {
-            pool.query('INSERT INTO users (name, email, username, password) VALUES ($1, $2, $3, $4)', [req.body.name, req.body.email, req.body.username, hash], (err) => {
-              if (err) {
-                console.log(err);
-              } else {
-                req.flash('success', 'Account created!');
-                res.redirect('/');
-              }
-            });
+            User.create({
+              name: req.body.name,
+              email: req.body.email,
+              username: req.body.username,
+              password: hash
+            }).then(() => {
+              req.flash('success', 'Account created!');
+              res.redirect('/');
+            }).catch((err) => console.log(err));
           }
         });
       }

@@ -1,16 +1,8 @@
 const LocalStrategy = require('passport-local').Strategy;
-const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
-// Set postgresql database
-const config = require('../config/database');
-const pool = new Pool({
-  user: config.user,
-  host: config.host,
-  database: config.database,
-  password: config.password,
-  port: config.port
-});
+// Import User model
+const User = require('../database/models').User;
 
 module.exports = (passport) => {
   passport.use(new LocalStrategy({
@@ -18,18 +10,14 @@ module.exports = (passport) => {
     passwordField: 'password'
   }, (email, password, done) => {
     // Find email in database
-    pool.query('SELECT * FROM users WHERE email=$1', [email], (err, result) => {
-      let user = result.rows[0];
-      // Connection error
-      if (err) {
-        return done(null, false, { message: 'Connection error' });
-      } else {
+    User.findOne({ where: { email: email }})
+      .then((user) => {
         // Check if user exists
         if (!user) {
-          return done(null, false, { message: 'Invalid email or password' });
+          return done(null, false, { message: 'Invalid email or password!' })
         } else {
           // Check if password is correct
-          bcrypt.compare(password, user.password, (err, isMatch) => {
+          bcrypt.compare(password, user.dataValues.password, (err, isMatch) => {
             if (err) {
               // If bcrypt threw error
               return done(err);
@@ -39,21 +27,25 @@ module.exports = (passport) => {
               return done(null, user);
             } else {
               // Incorrect password
-              return done(null, false, { message: 'Invalid email or password' });
+              return done(null, false, { message: 'Invalid email or password!' });
             }
           });
         }
-      }
-    });
+      })
+      .catch(() => {
+        return done(null, false, { message: 'Connection error' });
+      });
   }));
 
   passport.serializeUser((user, done) => {
-    done(null, user.id);
+    done(null, user.dataValues.id);
   });
 
   passport.deserializeUser((id, done) => {
-    pool.query('SELECT * FROM users WHERE id=$1', [id], (err, result) => {
-      done(err, result.rows[0]);
-    });
+    User.findByPk(id)
+      .then((user) => {
+        done(null, user.dataValues);
+      })
+      .catch(err => console.log(err));
   });
 }
