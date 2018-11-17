@@ -1,3 +1,4 @@
 /node_modules
 
+.bashrc
 /database/config/config.json

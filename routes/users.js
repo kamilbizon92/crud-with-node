@@ -4,6 +4,9 @@ const { check, validationResult } = require('express-validator/check');
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
 
+// Import register mail template
+const registerMail = require('../mailer/register');
+
 // Import User model
 const User = require('../database/models').User;
 
@@ -44,6 +47,7 @@ router.post('/register', [
               username: req.body.username,
               password: hash
             }).then(() => {
+              registerMail(req.body.email, req.body.username);
               req.flash('success', 'Account created!');
               res.redirect('/');
             }).catch((err) => console.log(err));
