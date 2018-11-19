@@ -1,4 +1,4 @@
-module.exports = function sendMessage(receiver, username) {
+module.exports = function sendMessage(receiver, username, token) {
   const sgMail = require('@sendgrid/mail');
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   
@@ -6,8 +6,8 @@ module.exports = function sendMessage(receiver, username) {
     to: receiver,
     from: 'test@email.com',
     subject: 'Welcome to crud-with-node app!',
-    text: `Hi ${username}! Welcome to crud-with-node application. Click link below to activate your account and confirm email address!`,
-    html: `<strong>Hi ${username}!<strong> <br/> Welcome to crud-with-node application. Click link below to activate your account and confirm email address!`
+    text: `Hi ${username}! Welcome to crud-with-node application. Click link below to activate your account and confirm email address! Click to activate: http://localhost:3000/users/register/${token}`,
+    html: `<strong>Hi ${username}!<strong> <br/> Welcome to crud-with-node application. Click link below to activate your account and confirm email address! <br /> <a href="http://localhost:3000/users/register/${token}">Click here to activate</a>`
   }
 
   return sgMail.send(msg);

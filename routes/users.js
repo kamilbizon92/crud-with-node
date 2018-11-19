@@ -3,6 +3,7 @@ const router = express.Router();
 const { check, validationResult } = require('express-validator/check');
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
+const crypto = require('crypto');
 
 // Import register mail template
 const registerMail = require('../mailer/register');
@@ -41,21 +42,70 @@ router.post('/register', [
           if (err) {
             console.log(err);
           } else {
-            User.create({
-              name: req.body.name,
-              email: req.body.email,
-              username: req.body.username,
-              password: hash
-            }).then(() => {
-              registerMail(req.body.email, req.body.username);
-              req.flash('success', 'Account created!');
-              res.redirect('/');
-            }).catch((err) => console.log(err));
+            // Create activation token
+            function createActivationToken() {
+              let token = crypto.randomBytes(64).toString('hex');
+              // Check if token already exists in database
+              User.findOne({
+                attributes: ['mailActivationToken'],
+                where: {
+                  mailActivationToken: token
+                }
+              }).then(user => {
+                // If not, create user
+                if (!user) {
+                  User.create({
+                    name: req.body.name,
+                    email: req.body.email,
+                    username: req.body.username,
+                    password: hash,
+                    mailActivationToken: token
+                  }, {
+                    fields: ['name', 'email', 'username', 'password', 'mailActivationToken']
+                  }).then(() => {
+                    // Generate mail to new user
+                    registerMail(req.body.email, req.body.username, token);
+                    req.flash('success', 'Account created!');
+                    res.redirect('/');
+                  }).catch((err) => console.log(err));
+                } else {
+                  // Token exists in database, create token once again
+                  createActivationToken();
+                }
+              }).catch(err => console.log(err));
+            }
+            createActivationToken();
           }
         });
       }
     });
   }
+});
+
+// Account activation routing
+router.get('/register/:hash', (req, res) => {
+  User.findOne({
+    where: {
+      mailActivationToken: req.params.hash
+    }
+  }).then((user) => {
+    if (user.dataValues.isAccountActive) {
+      // If account is active - redirect to index page
+      res.redirect('/');
+    } else {
+      // If not - activate with token
+      User.update({
+        isAccountActive: true
+      }, {
+        where: {
+          id: user.dataValues.id
+        }
+      }).then(() => {
+        req.flash('success', 'Your account now is active. Please log in.');
+        res.redirect('/users/login');
+      }).catch(err => console.log(err));
+    } 
+  }).catch(err => console.log(err));
 });
 
 // Login form

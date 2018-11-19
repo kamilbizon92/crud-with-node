@@ -16,20 +16,25 @@ module.exports = (passport) => {
         if (!user) {
           return done(null, false, { message: 'Invalid email or password!' })
         } else {
-          // Check if password is correct
-          bcrypt.compare(password, user.dataValues.password, (err, isMatch) => {
-            if (err) {
-              // If bcrypt threw error
-              return done(err);
-            }
-            // Password correct
-            if (isMatch) {
-              return done(null, user);
-            } else {
-              // Incorrect password
-              return done(null, false, { message: 'Invalid email or password!' });
-            }
-          });
+          // Check if account is active
+          if (!user.dataValues.isAccountActive) {
+            return done(null, false, { message: 'You must activate your account' });
+          } else {
+            // Check if password is correct
+            bcrypt.compare(password, user.dataValues.password, (err, isMatch) => {
+              if (err) {
+                // If bcrypt threw error
+                return done(err);
+              }
+              // Password correct
+              if (isMatch) {
+                return done(null, user);
+              } else {
+                // Incorrect password
+                return done(null, false, { message: 'Invalid email or password!' });
+              }
+            });
+          }
         }
       })
       .catch(() => {
