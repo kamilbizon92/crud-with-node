@@ -19,10 +19,37 @@ router.get('/register', (req, res) => {
 // Create user
 router.post('/register', [
   check('name', 'Name is required!').not().isEmpty(),
+  check('name', 'Name must have beetween 5 and 20 characters length').isLength({ min: 5, max: 20 }),
   check('email', 'Email is required!').not().isEmpty(),
   check('email', 'Email is not valid!').isEmail(),
+  check('email').custom(value => {
+    return User.findOne({
+      attributes: ['email'],
+      where: {
+        email: value
+      }
+    }).then(user => {
+      if (user) {
+        return Promise.reject('Email already in use');
+      }
+    });
+  }),
   check('username', 'Username is required!').not().isEmpty(),
+  check('username', 'Username must have beetween 5 and 20 characters length').isLength( { min: 5, max:20 }),
+  check('username').custom(value => {
+    return User.findOne({
+      attributes: ['username'],
+      where: {
+        username: value
+      }
+    }).then(user => {
+      if (user) {
+        return Promise.reject('Username already in use');
+      }
+    });
+  }),
   check('password', 'Password is required!').not().isEmpty(),
+  check('password', 'Password must have at least 8 characters').isLength({ min: 8 }),
   check('password2', 'Passwords do not match!').exists().custom((value, { req }) => {
     return value === req.body.password;
   })
