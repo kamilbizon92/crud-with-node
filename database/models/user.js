@@ -6,7 +6,10 @@ module.exports = (sequelize, DataTypes) => {
     username: DataTypes.STRING,
     password: DataTypes.STRING,
     isAccountActive: DataTypes.BOOLEAN,
-    mailActivationToken: DataTypes.STRING
+    mailActivationToken: DataTypes.STRING,
+    passwordRecoveryToken: DataTypes.STRING,
+    expirePasswordRecovery: DataTypes.DATE,
+    isRecoveryTokenUsed: DataTypes.BOOLEAN
   }, {
     tableName: 'users'
   });
