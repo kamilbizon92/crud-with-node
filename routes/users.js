@@ -11,8 +11,9 @@ const registerMail = require('../mailer/register');
 const passwordRecoveryMail = require('../mailer/passwordRecovery');
 const newPasswordMail = require('../mailer/newPassword');
 
-// Import User model
+// Import User and Article models
 const User = require('../database/models').User;
+const Article = require('../database/models').Article;
 
 // Register form
 router.get('/register', (req, res) => {
@@ -38,7 +39,7 @@ router.post('/register', [
     });
   }),
   check('username', 'Username is required!').not().isEmpty(),
-  check('username', 'Username must have beetween 5 and 20 characters length').isLength( { min: 5, max:20 }),
+  check('username', 'Username must have between 5 and 20 characters length').isLength( { min: 5, max: 20 }),
   check('username').custom(value => {
     return User.findOne({
       attributes: ['username'],
@@ -358,6 +359,140 @@ router.post('/activation', (req, res) => {
   }
 })
 
+// User account
+router.get('/account', isUserLogged, (req, res) => {
+   res.render('account');
+});
+
+// User settings
+router.get('/account/settings', isUserLogged, (req, res) => {
+  res.render('settings');
+});
+
+// Username change
+router.get('/account/settings/username', isUserLogged, (req, res) => {
+  res.render('change_username');
+});
+
+router.post('/account/settings/username', isUserLogged, [
+  check('username', 'Username must have between 5 and 20 characters length').isLength({ min: 5, max: 20 }),
+  check('username').custom(value => {
+    return User.findOne({
+      attributes: ['username'],
+      where: {
+        username: value
+      }
+    }).then(user => {
+      if (user) {
+        return Promise.reject('Username already in use!');
+      }
+    });
+  })
+], (req, res) => {
+  let errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.render('change_username', {
+      errors: errors.array(),
+      user: req.user
+    });
+  } else {
+    // Update username
+    User.update({
+      username: req.body.username
+    }, {
+      where: {
+        id: req.user.id
+      }
+    }).then(() => {
+      req.flash('success', 'Username updated successfully');
+      res.redirect('/users/account');
+    }).catch(err => console.log(err));
+  }
+});
+
+// Password change
+router.get('/account/settings/password', isUserLogged, (req, res) => {
+  res.render('change_password');
+});
+
+router.post('/account/settings/password', isUserLogged, [
+  check('old_password', 'You must type your current password!').not().isEmpty(),
+  check('new_password', 'New password is required').not().isEmpty(),
+  check('new_password', 'New password must have at least 8 characters').isLength({ min: 8 }),
+  check('new_password2', 'New password do not match').exists().custom((value, { req }) => {
+    return value === req.body.new_password;
+  })
+], (req, res) => {
+  // Check if old password is correct
+  bcrypt.compare(req.body.old_password, req.user.password, (err, isMatch) => {
+    if (err) {
+      return console.log(err);
+    }
+    if (isMatch) {
+      // Password correct, further validation
+      let errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.render('change_password', {
+          errors: errors.array(),
+          user: req.user
+        });
+      } else {
+        bcrypt.genSalt(10, (err, salt) => {
+          if (err) {
+            console.log(err);
+          } else {
+            // Hash new password if all is ok
+            bcrypt.hash(req.body.new_password, salt, (err, hash) => {
+              if (err) {
+                console.log(err);
+              } else {
+                User.update({
+                  password: hash
+                }, {
+                  where: {
+                    id: req.user.id
+                  }
+                }, {
+                  fields: ['password']
+                }).then(() => {
+                  req.flash('success', 'Password updated');
+                  res.redirect('/users/account/settings');
+                }).catch(err => console.log(err));
+              }
+            });
+          }
+        });
+      }
+    } else {
+      // Wrong password
+      req.flash('warning', 'Incorrect old password');
+      res.redirect('/users/account/settings/password');
+    }
+  });
+});
+
+// User social profile
+router.get('/profile/:username', (req, res) => {
+  User.findOne({
+    attributes: ['id', 'username'],
+    where: {
+      username: req.params.username
+    }
+  }).then(user => {
+    userId = user.dataValues.id;
+    Article.findAll({
+      where: {
+        author: userId
+      }
+    }).then(articles => {
+      res.render('user_articles', {
+        articles,
+        username: user.dataValues.username
+      });
+    }).catch(err => console.log(err));
+  }).catch(err => console.log(err));
+});
+
 // Login form
 router.get('/login', (req, res) => {
   res.render('login');
@@ -390,5 +525,15 @@ router.get('/logout', (req, res) => {
   req.flash('success', 'Come back later');
   res.redirect('/');
 });
+
+// Access control
+function isUserLogged(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  } else {
+    req.flash('warning', 'Access denied');
+    res.redirect('/');
+  }
+}
 
 module.exports = router;

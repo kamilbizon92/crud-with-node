@@ -1,3 +1,21 @@
 .hello {
-  color: white;
+  color: gray;
+}
+
+.right {
+  color: gray;
+  position: absolute;
+  left: 80%;
+}
+
+li {
+  list-style: none;
+}
+
+ul.user-profile {
+  margin-top: 15px;
+  width: 50%;
+  float: left;
+  font-size: 20px;
+  font-weight: bold;
 }

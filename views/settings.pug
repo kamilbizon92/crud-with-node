@@ -1,0 +1,10 @@
+extends layout
+
+block content
+  h4 Hello #{user.username}, it is your account
+  hr
+  a(href="/users/account/settings/username") Change username
+  hr
+  a(href="/users/account/settings/password") Change password
+  hr
+  a(href="/users/account/") Back to profile

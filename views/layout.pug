@@ -14,6 +14,7 @@ html(lang="en")
         a.navbar-brand(href='/articles/add') Add article
         a.navbar-brand(href='/users/logout') Log out
         span.hello Hello, #{user.username}
+        a.right(href='/users/account') Profile
       else
         a.navbar-brand(href='/users/register') Create account
         a.navbar-brand(href='/users/login') Log in
