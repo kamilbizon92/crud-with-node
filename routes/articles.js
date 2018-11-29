@@ -12,7 +12,7 @@ router.get('/add', isUserLogged, (req, res) => {
 });
 
 // Add new article
-router.post('/add', [
+router.post('/add', isUserLogged, [
   check('title', 'Title is required').not().isEmpty(),
   check('body', 'Article must have a body').not().isEmpty()
 ], (req, res) => {
@@ -68,7 +68,7 @@ router.get('/edit/:id', isUserLogged, (req, res) => {
 });
 
 // Post edit article (update)
-router.post('/edit/:id', [
+router.post('/edit/:id', isUserLogged, [
   check('title', 'Title is required').not().isEmpty(),
   check('body', 'Article must have a body').not().isEmpty()
 ], (req, res) => {
@@ -98,7 +98,7 @@ router.post('/edit/:id', [
 });
 
 // Delete article
-router.delete('/:id', (req, res) => {
+router.delete('/:id', isUserLogged, (req, res) => {
   // Ajax request, so need to response status, protect from anonymous deleting -> Server Internal Error
   if (!req.user.id) {
     res.status(500).send();

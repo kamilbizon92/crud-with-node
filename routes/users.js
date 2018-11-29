@@ -149,67 +149,72 @@ router.get('/recovery', (req, res) => {
 });
 
 router.post('/recovery', (req, res) => {
-  // Check if email address exists in database
-  if (req.body.email.length === 0) {
-    res.render('recovery', {
-      error: 'Incorrent email'
-    });
+  // Prevent from sending token when user is logged in
+  if (req.user) {
+    res.redirect('/');
   } else {
-    User.findOne({
-      where: {
-        email: req.body.email
-      }
-    }).then((user) => {
-      if (user) {
-        // Check if user account is active
-        if (user.dataValues.isAccountActive === true) {
-          // Create token for password recovery
-          function createPasswordRecoveryToken() {
-            let token = crypto.randomBytes(64).toString('hex');
-            // Check if token already exists
-            User.findOne({
-              attributes: ['passwordRecoveryToken'],
-              where: {
-                passwordRecoveryToken: token
-              }
-            }).then(user => {
-              // If not, send mail with token
-              if (!user) {
-                let date = new Date();
-                let timeNow = date.getTime();
-                // Set one hour before token expires
-                let expireDate = date.setTime(timeNow + 1000 * 3600);
-                User.update({
-                  passwordRecoveryToken: token,
-                  expirePasswordRecovery: expireDate,
-                  isRecoveryTokenUsed: false
-                }, {
-                  where: {
-                    email: req.body.email
-                  }
-                }).then(() => {
-                  passwordRecoveryMail(req.body.email, token);
-                  req.flash('success', 'Email has been sent!');
-                  res.redirect('/');
-                }).catch(err => console.log(err));
-              } else {
-                // Token exists in database, create token once again
-                createPasswordRecoveryToken();
-              }
-            }).catch(err => console.log(err));
+    // Check if email address exists in database
+    if (req.body.email.length === 0) {
+      res.render('recovery', {
+        error: 'Incorrent email'
+      });
+    } else {
+      User.findOne({
+        where: {
+          email: req.body.email
+        }
+      }).then((user) => {
+        if (user) {
+          // Check if user account is active
+          if (user.dataValues.isAccountActive === true) {
+            // Create token for password recovery
+            function createPasswordRecoveryToken() {
+              let token = crypto.randomBytes(64).toString('hex');
+              // Check if token already exists
+              User.findOne({
+                attributes: ['passwordRecoveryToken'],
+                where: {
+                  passwordRecoveryToken: token
+                }
+              }).then(user => {
+                // If not, send mail with token
+                if (!user) {
+                  let date = new Date();
+                  let timeNow = date.getTime();
+                  // Set one hour before token expires
+                  let expireDate = date.setTime(timeNow + 1000 * 3600);
+                  User.update({
+                    passwordRecoveryToken: token,
+                    expirePasswordRecovery: expireDate,
+                    isRecoveryTokenUsed: false
+                  }, {
+                    where: {
+                      email: req.body.email
+                    }
+                  }).then(() => {
+                    passwordRecoveryMail(req.body.email, token);
+                    req.flash('success', 'Email has been sent!');
+                    res.redirect('/');
+                  }).catch(err => console.log(err));
+                } else {
+                  // Token exists in database, create token once again
+                  createPasswordRecoveryToken();
+                }
+              }).catch(err => console.log(err));
+            }
+            createPasswordRecoveryToken();
+          } else {
+            res.render('recovery', {
+              error: 'You must activate your account first!'
+            });
           }
-          createPasswordRecoveryToken();
         } else {
           res.render('recovery', {
-            error: 'You must activate your account first!'
+            error: "Couldn't find your email address in a database"
           });
         }
-      } else {
-        res.render('recovery', {
-          error: "Couldn't find your email address in a database"
-        });
-      }
-    }).catch(err => console.log(err));
+      }).catch(err => console.log(err));
+    }
   }
 });
 
@@ -331,31 +336,36 @@ router.get('/activation', (req, res) => {
 });
 
 router.post('/activation', (req, res) => {
-  // Check if email address is not empty
-  if (req.body.email.length === 0) {
-    res.render('activation', {
-      error: 'Incorrect email'
-    });
+  // Prevent from sending activation email, when user already has active account and is logged in
+  if (req.user) {
+    res.redirect('/');
   } else {
-    User.findOne({
-      where: {
-        email: req.body.email
-      }
-    }).then(user => {
-      // Check if user exists
-      if (!user) {
-        res.render('activation', {
-          error: "Couldn't find your email address in a database"
-        });
-      } else if (user.dataValues.isAccountActive === true) {
-        req.flash('warning', 'Your account is already active!');
-        res.redirect('/users/login');
-      } else {
-        registerMail(req.body.email, user.dataValues.username, user.dataValues.mailActivationToken);
-        req.flash('success', 'Email has been resend');
-        res.redirect('/');
-      }
-    })
+    // Check if email address is not empty
+    if (req.body.email.length === 0) {
+      res.render('activation', {
+        error: 'Incorrect email'
+      });
+    } else {
+      User.findOne({
+        where: {
+          email: req.body.email
+        }
+      }).then(user => {
+        // Check if user exists
+        if (!user) {
+          res.render('activation', {
+            error: "Couldn't find your email address in a database"
+          });
+        } else if (user.dataValues.isAccountActive === true) {
+          req.flash('warning', 'Your account is already active!');
+          res.redirect('/users/login');
+        } else {
+          registerMail(req.body.email, user.dataValues.username, user.dataValues.mailActivationToken);
+          req.flash('success', 'Email has been resend');
+          res.redirect('/');
+        }
+      }).catch(err => console.log(err));
+    }
   }
 })
 
@@ -520,7 +530,7 @@ router.post('/login', (req, res, next) => {
 });
 
 // Logout
-router.get('/logout', (req, res) => {
+router.get('/logout', isUserLogged, (req, res) => {
   req.logout();
   req.flash('success', 'Come back later');
   res.redirect('/');
