@@ -1,4 +1,4 @@
 /node_modules
 
-.bashrc
 /database/config/config.json
+/mailer/config.json
