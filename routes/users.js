@@ -489,17 +489,24 @@ router.get('/profile/:username', (req, res) => {
       username: req.params.username
     }
   }).then(user => {
-    userId = user.dataValues.id;
-    Article.findAll({
-      where: {
-        author: userId
-      }
-    }).then(articles => {
-      res.render('user_articles', {
-        articles,
-        username: user.dataValues.username
-      });
-    }).catch(err => console.log(err));
+    // If user does not exist - redirect to home page
+    if (!user) {
+      req.flash('warning', "User does not exist");
+      res.redirect('/');
+    } else {
+      // If user exists - show all articles on user profile
+      userId = user.dataValues.id;
+      Article.findAll({
+        where: {
+          author: userId
+        }
+      }).then(articles => {
+        res.render('user_articles', {
+          articles,
+          username: user.dataValues.username
+        });
+      }).catch(err => console.log(err));
+    }
   }).catch(err => console.log(err));
 });
 

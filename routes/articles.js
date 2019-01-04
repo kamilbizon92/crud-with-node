@@ -83,17 +83,27 @@ router.post('/edit/:id', isUserLogged, [
         });
       }).catch(err => console.log(err));
   } else {
-    Article.update({ 
-      title: req.body.title,
-      body: req.body.body
-    }, {
-      where: {
-        id: req.params.id
-      }
-    }).then(() => {
-      req.flash('success', 'Article updated!');
-      res.redirect('/');
-    }).catch(err => console.log(err));
+    // Prevent from updating by other logged in user
+    Article.findByPk(req.params.id)
+      .then(article => {
+        if (article.dataValues.author != req.user.id) {
+          req.flash('warning', 'Access denied!');
+          res.redirect('/');
+        } else {
+          Article.update({ 
+            title: req.body.title,
+            body: req.body.body
+          }, {
+            where: {
+              id: req.params.id
+            }
+          }).then(() => {
+            req.flash('success', 'Article updated!');
+            res.redirect('/');
+          }).catch(err => console.log(err));
+        }
+      })
+      .catch(err => console.log(err));
   }
 });
 
