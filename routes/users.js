@@ -30,7 +30,7 @@ router.post('/register', [
     return User.findOne({
       attributes: ['email'],
       where: {
-        email: value
+        email: value.trim()
       }
     }).then(user => {
       if (user) {
@@ -44,7 +44,7 @@ router.post('/register', [
     return User.findOne({
       attributes: ['username'],
       where: {
-        username: value
+        username: value.trim()
       }
     }).then(user => {
       if (user) {
@@ -86,16 +86,16 @@ router.post('/register', [
                 // If not, create user
                 if (!user) {
                   User.create({
-                    name: req.body.name,
-                    email: req.body.email,
-                    username: req.body.username,
+                    name: req.body.name.trim(),
+                    email: req.body.email.trim(),
+                    username: req.body.username.trim(),
                     password: hash,
                     mailActivationToken: token
                   }, {
                     fields: ['name', 'email', 'username', 'password', 'mailActivationToken']
                   }).then(() => {
                     // Generate mail to new user
-                    registerMail(req.body.email, req.body.username, token);
+                    registerMail(req.body.email.trim(), req.body.username.trim(), token);
                     req.flash('success', 'Account created!');
                     res.redirect('/');
                   }).catch((err) => console.log(err));
@@ -154,14 +154,14 @@ router.post('/recovery', (req, res) => {
     res.redirect('/');
   } else {
     // Check if email address exists in database
-    if (req.body.email.length === 0) {
+    if (req.body.email.trim().length === 0) {
       res.render('recovery', {
         error: 'Incorrent email'
       });
     } else {
       User.findOne({
         where: {
-          email: req.body.email
+          email: req.body.email.trim()
         }
       }).then((user) => {
         if (user) {
@@ -189,10 +189,10 @@ router.post('/recovery', (req, res) => {
                     isRecoveryTokenUsed: false
                   }, {
                     where: {
-                      email: req.body.email
+                      email: req.body.email.trim()
                     }
                   }).then(() => {
-                    passwordRecoveryMail(req.body.email, token);
+                    passwordRecoveryMail(req.body.email.trim(), token);
                     req.flash('success', 'Email has been sent!');
                     res.redirect('/');
                   }).catch(err => console.log(err));
@@ -341,14 +341,14 @@ router.post('/activation', (req, res) => {
     res.redirect('/');
   } else {
     // Check if email address is not empty
-    if (req.body.email.length === 0) {
+    if (req.body.email.trim().length === 0) {
       res.render('activation', {
         error: 'Incorrect email'
       });
     } else {
       User.findOne({
         where: {
-          email: req.body.email
+          email: req.body.email.trim()
         }
       }).then(user => {
         // Check if user exists
@@ -360,7 +360,7 @@ router.post('/activation', (req, res) => {
           req.flash('warning', 'Your account is already active!');
           res.redirect('/users/login');
         } else {
-          registerMail(req.body.email, user.dataValues.username, user.dataValues.mailActivationToken);
+          registerMail(req.body.email.trim(), user.dataValues.username, user.dataValues.mailActivationToken);
           req.flash('success', 'Email has been resend');
           res.redirect('/');
         }
@@ -390,7 +390,7 @@ router.post('/account/settings/username', isUserLogged, [
     return User.findOne({
       attributes: ['username'],
       where: {
-        username: value
+        username: value.trim()
       }
     }).then(user => {
       if (user) {
@@ -408,7 +408,7 @@ router.post('/account/settings/username', isUserLogged, [
   } else {
     // Update username
     User.update({
-      username: req.body.username
+      username: req.body.username.trim()
     }, {
       where: {
         id: req.user.id

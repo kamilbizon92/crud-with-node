@@ -24,9 +24,9 @@ router.post('/add', isUserLogged, [
     });
   } else {
     Article.create({
-      title: req.body.title,
+      title: req.body.title.trim(),
       author: req.user.id,
-      body: req.body.body
+      body: req.body.body.trim()
     }).then(() => {
       req.flash('success', 'Article added!');
       res.redirect('/');
@@ -91,8 +91,8 @@ router.post('/edit/:id', isUserLogged, [
           res.redirect('/');
         } else {
           Article.update({ 
-            title: req.body.title,
-            body: req.body.body
+            title: req.body.title.trim(),
+            body: req.body.body.trim()
           }, {
             where: {
               id: req.params.id
