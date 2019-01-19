@@ -17,7 +17,17 @@ const Article = require('../database/models').Article;
 
 // Register form
 router.get('/register', (req, res) => {
-  res.render('register');
+  if (req.user) {
+    res.json({
+      success: false,
+      userLogged: req.isAuthenticated()
+    });
+  } else {
+    res.json({
+      success: true,
+      userLogged: req.isAuthenticated()
+    });
+  }
 });
 
 // Create user
@@ -58,58 +68,69 @@ router.post('/register', [
     return value === req.body.password;
   })
 ], (req, res) => {
-  let errors = validationResult(req);
-
-  if (!errors.isEmpty()) {
-    res.render('register', {
-      errors: errors.array()
+  if (req.user) {
+    // If user is logged in, prevent from creating account
+    res.json({
+      success: false,
+      userLogged: req.isAuthenticated()
     });
   } else {
-    bcrypt.genSalt(10, (err, salt) => {
-      if (err) {
-        console.log(err);
-      } else {
-        bcrypt.hash(req.body.password, salt, (err, hash) => {
-          if (err) {
-            console.log(err);
-          } else {
-            // Create activation token
-            function createActivationToken() {
-              let token = crypto.randomBytes(64).toString('hex');
-              // Check if token already exists in database
-              User.findOne({
-                attributes: ['mailActivationToken'],
-                where: {
-                  mailActivationToken: token
-                }
-              }).then(user => {
-                // If not, create user
-                if (!user) {
-                  User.create({
-                    name: req.body.name.trim(),
-                    email: req.body.email.trim(),
-                    username: req.body.username.trim(),
-                    password: hash,
+    let errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.json({
+        success: false,
+        message: errors.array()
+      });
+    } else {
+      bcrypt.genSalt(10, (err, salt) => {
+        if (err) {
+          console.log(err);
+        } else {
+          bcrypt.hash(req.body.password, salt, (err, hash) => {
+            if (err) {
+              console.log(err);
+            } else {
+              // Create activation token
+              function createActivationToken() {
+                let token = crypto.randomBytes(64).toString('hex');
+                // Check if token already exists in database
+                User.findOne({
+                  attributes: ['mailActivationToken'],
+                  where: {
                     mailActivationToken: token
-                  }, {
-                    fields: ['name', 'email', 'username', 'password', 'mailActivationToken']
-                  }).then(() => {
-                    // Generate mail to new user
-                    registerMail(req.body.email.trim(), req.body.username.trim(), token);
-                    req.flash('success', 'Account created!');
-                    res.redirect('/');
-                  }).catch((err) => console.log(err));
-                } else {
-                  // Token exists in database, create token once again
-                  createActivationToken();
-                }
-              }).catch(err => console.log(err));
+                  }
+                }).then(user => {
+                  // If not, create user
+                  if (!user) {
+                    User.create({
+                      name: req.body.name.trim(),
+                      email: req.body.email.trim(),
+                      username: req.body.username.trim(),
+                      password: hash,
+                      mailActivationToken: token
+                    }, {
+                      fields: ['name', 'email', 'username', 'password', 'mailActivationToken']
+                    }).then(() => {
+                      // Generate mail to new user
+                      registerMail(req.body.email.trim(), req.body.username.trim(), token);
+                      return res.json({
+                        success: true,
+                        message: 'Account created!'
+                      });
+                    }).catch((err) => console.log(err));
+                  } else {
+                    // Token exists in database, create token once again
+                    createActivationToken();
+                  }
+                }).catch(err => console.log(err));
+              }
+              createActivationToken();
             }
-            createActivationToken();
-          }
-        });
-      }
-    });
+          });
+        }
+      });
+    }
   }
 });
 
@@ -120,43 +141,67 @@ router.get('/register/:hash', (req, res) => {
       mailActivationToken: req.params.hash
     }
   }).then((user) => {
-    if (user.dataValues.isAccountActive) {
-      // If account is active - redirect to index page
-      res.redirect('/');
+    if (!user) {
+      // Invalid token, does not exist in a database
+      return res.json({
+        success: false,
+        message: 'Invalid token'
+      });
     } else {
-      // If not - activate with token
-      User.update({
-        isAccountActive: true
-      }, {
-        where: {
-          id: user.dataValues.id
-        }
-      }).then(() => {
-        req.flash('success', 'Your account now is active. Please log in.');
-        res.redirect('/users/login');
-      }).catch(err => console.log(err));
-    } 
+      if (user.dataValues.isAccountActive) {
+        // If account is active - redirect to index page
+        return res.json({
+          success: false,
+          message: 'Account is already active'
+        });
+      } else {
+        // If not - activate with token
+        User.update({
+          isAccountActive: true
+        }, {
+          where: {
+            id: user.dataValues.id
+          }
+        }).then(() => {
+          return res.json({
+            success: true,
+            message: 'Your account now is active. Please log in.'
+          });
+        }).catch(err => console.log(err));
+      }
+    }
   }).catch(err => console.log(err));
 });
 
 // Password recovery email
 router.get('/recovery', (req, res) => {
   if (req.user) {
-    res.redirect('/');
+    res.json({
+      success: false,
+      userLogged: req.isAuthenticated()
+    });
   } else {
-    res.render('recovery');
+    res.json({
+      success: true,
+      userLogged: req.isAuthenticated()
+    });
   }
 });
 
 router.post('/recovery', (req, res) => {
   // Prevent from sending token when user is logged in
   if (req.user) {
-    res.redirect('/');
+    res.json({
+      success: false,
+      userLogged: req.isAuthenticated(),
+      message: 'You are logged in'
+    });
   } else {
     // Check if email address exists in database
     if (req.body.email.trim().length === 0) {
-      res.render('recovery', {
-        error: 'Incorrent email'
+      return res.json({
+        success: false,
+        message: 'Incorrect email'
       });
     } else {
       User.findOne({
@@ -193,8 +238,10 @@ router.post('/recovery', (req, res) => {
                     }
                   }).then(() => {
                     passwordRecoveryMail(req.body.email.trim(), token);
-                    req.flash('success', 'Email has been sent!');
-                    res.redirect('/');
+                    return res.json({
+                      success: true,
+                      message: 'Email has been sent!'
+                    });
                   }).catch(err => console.log(err));
                 } else {
                   // Token exists in database, create token once again
@@ -204,13 +251,15 @@ router.post('/recovery', (req, res) => {
             }
             createPasswordRecoveryToken();
           } else {
-            res.render('recovery', {
-              error: 'You must activate your account first!'
+            return res.json({
+              success: false,
+              message: 'You must activate your account first!'
             });
           }
         } else {
-          res.render('recovery', {
-            error: "Couldn't find your email address in a database"
+          return res.json({
+            success: false,
+            message: "Couldn't find your email address in a database"
           });
         }
       }).catch(err => console.log(err));
@@ -230,19 +279,26 @@ router.get('/recovery/:hash', (req, res) => {
       let currentTime = new Date();
       // Check if recovery token expired
       if (user.dataValues.expirePasswordRecovery < currentTime) {
-        req.flash('warning', 'Link to your password change has expired. Try once again');
-        res.redirect('/users/recovery');
+        return res.json({
+          success: false,
+          message: 'Link to your password change has expired. Try once again'
+        });
       } else if (user.dataValues.isRecoveryTokenUsed) {
-        req.flash('warning', 'Error. This token has been used.');
-        res.redirect('/users/recovery');
+        return res.json({
+          success: false,
+          message: 'Error. This token has been used.'
+        });
       } else {
-        res.render('password_recovery', {
-          hash: req.params.hash
+        return res.json({
+          success: true
         });
       }
     } else {
-      // If recovery token expired - redirect to home page
-      res.redirect('/');
+      // If recovery token does not exist - redirect to home page
+      return res.json({
+        success: false,
+        message: 'Recovery token does not exist'
+      });
     }
   }).catch(err => console.log(err));
 });
@@ -250,7 +306,6 @@ router.get('/recovery/:hash', (req, res) => {
 
 // Password recovery - update user password
 router.post('/recovery/:hash', [
-  check('password', 'Password is required').not().isEmpty(),
   check('password', 'Password must have at least 8 characters').isLength({ min: 8 }),
   check('password2', 'Passwords do not match!').exists().custom((value, { req }) => {
     return value === req.body.password;
@@ -260,9 +315,9 @@ router.post('/recovery/:hash', [
   
   if (!errors.isEmpty()) {
     // Prevent from passing undefined hash to rerender when password does not pass the validation
-    res.render('password_recovery', {
-      errors: errors.array(),
-      hash: req.params.hash
+    return res.json({
+      success: false,
+      message: errors.array()
     });
   } else {
     // Check if new password is the same as the old password
@@ -277,16 +332,24 @@ router.post('/recovery/:hash', [
             return console.log(err);
           }
           if (isMatch) {
-            req.flash('warning', 'New password cannot be the same as the old!');
-            res.redirect(`/users/recovery/${req.params.hash}`);
+            return res.json({
+              success: false,
+              message: [{
+                param: 'password2',
+                msg: 'New password cannot be the same as the old!'
+              }]
+            });
           } else {
             let currentTime = new Date();
             // Variable which store user email, needed to avoid additional query to database
             let userEmail = user.dataValues.email;
             // Check if password recovery token is still active (user is afk)
             if (user.dataValues.expirePasswordRecovery < currentTime) {
-              req.flash('warning', 'Link to your password change has expired. Try once again');
-              res.redirect('/users/recovery');
+              return res.json({
+                success: false,
+                message: 'Link to your password change has expired. Try once again',
+                expired: true
+              });
             } else {
               bcrypt.genSalt(10, (err, salt) => {
                 if (err) {
@@ -308,8 +371,10 @@ router.post('/recovery/:hash', [
                         fields: ['password', 'isRecoveryTokenUsed']
                       }).then(() => {
                         newPasswordMail(userEmail);
-                        req.flash('success', 'Password has been changed, now you can log in');
-                        res.redirect('/users/login');
+                        return res.json({
+                          success: true,
+                          message: 'Password has been changed, now you can log in'
+                        });
                       }).catch(err => console.log(err));
                     }
                   });
@@ -319,8 +384,10 @@ router.post('/recovery/:hash', [
           }
         });
       } else {
-        req.flash('warning', 'Something went wrong. Try again');
-        res.redirect('/');
+        return res.json({
+          success: false,
+          message: 'Something went wrong. Try again'
+        });
       }
     }).catch(err => console.log(err));
   }
@@ -329,21 +396,32 @@ router.post('/recovery/:hash', [
 // Resend email with activation token
 router.get('/activation', (req, res) => {
   if (req.user) {
-    res.redirect('/');
+    res.json({
+      success: false,
+      userLogged: req.isAuthenticated()
+    });
   } else {
-    res.render('activation');
+    res.json({
+      success: true,
+      userLogged: req.isAuthenticated()
+    });
   }
 });
 
 router.post('/activation', (req, res) => {
   // Prevent from sending activation email, when user already has active account and is logged in
   if (req.user) {
-    res.redirect('/');
+    res.json({
+      success: false,
+      userLogged: req.isAuthenticated(),
+      message: 'Your account is already active!'
+    });
   } else {
     // Check if email address is not empty
     if (req.body.email.trim().length === 0) {
-      res.render('activation', {
-        error: 'Incorrect email'
+      return res.json({
+        success: false,
+        message: 'Incorrect email'
       });
     } else {
       User.findOne({
@@ -353,16 +431,21 @@ router.post('/activation', (req, res) => {
       }).then(user => {
         // Check if user exists
         if (!user) {
-          res.render('activation', {
-            error: "Couldn't find your email address in a database"
+          return res.json({
+            success: false,
+            message: "Couldn't find your email address in a database"
           });
         } else if (user.dataValues.isAccountActive === true) {
-          req.flash('warning', 'Your account is already active!');
-          res.redirect('/users/login');
+          return res.json({
+            success: false,
+            message: 'Your account is already active!'
+          });
         } else {
           registerMail(req.body.email.trim(), user.dataValues.username, user.dataValues.mailActivationToken);
-          req.flash('success', 'Email has been resend');
-          res.redirect('/');
+          return res.json({
+            success: true,
+            message: 'Email has been send'
+          });
         }
       }).catch(err => console.log(err));
     }
@@ -371,17 +454,28 @@ router.post('/activation', (req, res) => {
 
 // User account
 router.get('/account', isUserLogged, (req, res) => {
-   res.render('account');
+   res.json({
+     success: true,
+     username: req.user.username,
+     userLogged: req.isAuthenticated()
+   });
 });
 
 // User settings
 router.get('/account/settings', isUserLogged, (req, res) => {
-  res.render('settings');
+  res.json({
+    success: true,
+    username: req.user.username,
+    userLogged: req.isAuthenticated()
+  });
 });
 
 // Username change
 router.get('/account/settings/username', isUserLogged, (req, res) => {
-  res.render('change_username');
+  res.json({
+    success: true,
+    userLogged: req.isAuthenticated()
+  });
 });
 
 router.post('/account/settings/username', isUserLogged, [
@@ -401,9 +495,9 @@ router.post('/account/settings/username', isUserLogged, [
 ], (req, res) => {
   let errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.render('change_username', {
-      errors: errors.array(),
-      user: req.user
+    res.json({
+      success: false,
+      message: errors.array()
     });
   } else {
     // Update username
@@ -414,20 +508,24 @@ router.post('/account/settings/username', isUserLogged, [
         id: req.user.id
       }
     }).then(() => {
-      req.flash('success', 'Username updated successfully');
-      res.redirect('/users/account');
+      res.json({
+        success: true,
+        message: 'Username updated successfully'
+      });
     }).catch(err => console.log(err));
   }
 });
 
 // Password change
 router.get('/account/settings/password', isUserLogged, (req, res) => {
-  res.render('change_password');
+  res.json({
+    success: true,
+    userLogged: req.isAuthenticated()
+  });
 });
 
 router.post('/account/settings/password', isUserLogged, [
   check('old_password', 'You must type your current password!').not().isEmpty(),
-  check('new_password', 'New password is required').not().isEmpty(),
   check('new_password', 'New password must have at least 8 characters').isLength({ min: 8 }),
   check('new_password2', 'New password do not match').exists().custom((value, { req }) => {
     return value === req.body.new_password;
@@ -442,9 +540,9 @@ router.post('/account/settings/password', isUserLogged, [
       // Password correct, further validation
       let errors = validationResult(req);
       if (!errors.isEmpty()) {
-        res.render('change_password', {
-          errors: errors.array(),
-          user: req.user
+        res.json({
+          success: false,
+          message: errors.array()
         });
       } else {
         bcrypt.genSalt(10, (err, salt) => {
@@ -465,8 +563,10 @@ router.post('/account/settings/password', isUserLogged, [
                 }, {
                   fields: ['password']
                 }).then(() => {
-                  req.flash('success', 'Password updated');
-                  res.redirect('/users/account/settings');
+                  res.json({
+                    success: true,
+                    message: 'Password updated'
+                  });
                 }).catch(err => console.log(err));
               }
             });
@@ -475,8 +575,13 @@ router.post('/account/settings/password', isUserLogged, [
       }
     } else {
       // Wrong password
-      req.flash('warning', 'Incorrect old password');
-      res.redirect('/users/account/settings/password');
+      res.json({
+        success: false,
+        message: [{
+          param: 'old_password',
+          msg: 'Incorrect old password'
+        }]
+      });
     }
   });
 });
@@ -491,19 +596,26 @@ router.get('/profile/:username', (req, res) => {
   }).then(user => {
     // If user does not exist - redirect to home page
     if (!user) {
-      req.flash('warning', "User does not exist");
-      res.redirect('/');
+      return res.json({
+        success: false,
+        message: 'User does not exist!'
+      });
     } else {
       // If user exists - show all articles on user profile
       userId = user.dataValues.id;
       Article.findAll({
         where: {
           author: userId
-        }
+        },
+        order: [['createdAt', 'DESC']]
       }).then(articles => {
-        res.render('user_articles', {
-          articles,
-          username: user.dataValues.username
+        return res.json({
+          success: true,
+          userLogged: req.isAuthenticated(),
+          message: {
+            user: user.dataValues.username,
+            articles
+          } 
         });
       }).catch(err => console.log(err));
     }
@@ -512,7 +624,17 @@ router.get('/profile/:username', (req, res) => {
 
 // Login form
 router.get('/login', (req, res) => {
-  res.render('login');
+  if (req.user) {
+    res.json({
+      success: false,
+      userLogged: req.isAuthenticated()
+    });
+  } else {
+    res.json({
+      success: true,
+      userLogged: req.isAuthenticated()
+    });
+  }
 });
 
 // Login process
@@ -522,16 +644,20 @@ router.post('/login', (req, res, next) => {
       return next(err);
     }
     if (!user) {
-      return res.render('login', {
-        loginError: info.message
+      return res.json({
+        success: false,
+        message: info.message
       });
     }
     req.login(user, (err) => {
       if (err){
         return next(err);
       }
-      req.flash('success', 'You are logged in');
-      res.redirect('/');
+      
+      return res.json({
+        success: true,
+        user: user
+      });
     });
   })(req, res, next);
 });
@@ -539,8 +665,10 @@ router.post('/login', (req, res, next) => {
 // Logout
 router.get('/logout', isUserLogged, (req, res) => {
   req.logout();
-  req.flash('success', 'Come back later');
-  res.redirect('/');
+  return res.json({
+    success: true,
+    message: 'Come back later'
+  });
 });
 
 // Access control
@@ -548,8 +676,10 @@ function isUserLogged(req, res, next) {
   if (req.isAuthenticated()) {
     return next();
   } else {
-    req.flash('warning', 'Access denied');
-    res.redirect('/');
+    res.json({
+      success: false,
+      message: 'Access denied!'
+    });
   }
 }
 

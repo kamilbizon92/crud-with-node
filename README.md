@@ -25,14 +25,17 @@ Main goal of this application was to write simple CRUD with registration, but wi
 - [x] several migrations
 
 ## Client side:
-- ajax
-- pug for rendering views
-- bootstrap for simple styling
+- ajax (old xhr delete)
+- pug for rendering views (first version of views)
+- bootstrap for simple styling (first version of views)
+- rednering with react.js (current views)
+- styling with materialize CSS (current views)
 #### What I did?
 - [x] pug template engine (which will be replaced by React.js)
-- [x] simple style with bootstrap
+- [x] simple style with materialize css (previous I used bootstrap)
 - [x] used pure javascript request to delete article (ajax)
+- [x] added React.js for rendering views (replaced pug enginge)
 
 Important! This project focuses on back-end, not on front-end.
 
-Live application can be found on heroku: https://crud-with-node-live.herokuapp.com
+Live application can be found on heroku: https://crud-with-node-live.herokuapp.com (contain pug template engine)

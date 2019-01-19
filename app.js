@@ -1,67 +1,50 @@
 const express = require('express');
-const path = require('path');
 const session = require('express-session');
-const flash = require('connect-flash');
 const passport = require('passport');
+const cors = require('cors');
 
 // Init app
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Import database model
-const Article = require('./database/models').Article;
+const PORT = process.env.PORT || 5000;
 
 // Needed for parsing req
 app.use(express.urlencoded({extended: true}));
-
-// Set public folder
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Load view engine
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
+app.use(express.json());
 
 // Set session and flash message
 app.use(session({
+  cookie: {
+    maxAge: 1000*60*15
+  },
+  name: 'sid',
   secret: 'keyboard cat',
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: false,
+  rolling: true
 }));
-
-app.use(flash());
-
-app.use((req, res, next) => {
-  res.locals.messages = req.flash();
-  next();
-});
 
 // Passport config
 require('./config/passport')(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Use cors for fetch request from client
+app.use(cors());
+
 // Set global user variable
 app.get('*', (req, res, next) => {
   res.locals.user = req.user || null;
+  if (req.user) {
+    app.locals.correctUserId = req.user.id
+  } else {
+    app.locals.correctUserId = false;
+  }
   next();
 });
 
-// Home route
-app.get('/', (req, res) => {
-  Article.findAll({
-    order: [['createdAt', 'DESC']]
-  }).then((articles) => {
-      res.render('index', {
-        articles
-      });
-  }).catch((err) => console.log(err)); 
-});
-
 // Route files
-const articles = require('./routes/articles');
-const users = require('./routes/users');
-app.use('/articles', articles);
-app.use('/users', users);
+app.use('/articles', require('./routes/articles'));
+app.use('/users', require('./routes/users'));
 
 // Start server
 app.listen(PORT, () => {
